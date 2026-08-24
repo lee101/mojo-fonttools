@@ -4,7 +4,7 @@ import itertools
 
 import numpy as np
 
-from .._lib import addr, lib
+from .._lib import addr, lib, py_lib
 
 
 def iup_contour(deltas, coords):
@@ -63,7 +63,7 @@ def iup_contour(deltas, coords):
         len(indices),
         addr(result, np.float64, writable=True),
     )
-    return list(zip(result[0].tolist(), result[1].tolist()))
+    return py_lib().mft_iup_result(addr(result, np.float64), n)
 
 
 def iup_delta(deltas, coords, ends):

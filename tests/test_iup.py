@@ -44,7 +44,9 @@ def test_iup_random_parity():
 )
 def test_iup_simd_tail_paths(deltas):
     coords = [(0, 0), (7, 12), (19, -3), (31, 18), (48, 4), (66, 27), (85, 9)]
-    assert np.asarray(iup_contour(deltas, coords)) == pytest.approx(
+    result = iup_contour(deltas, coords)
+    assert all(isinstance(value, tuple) for value in result)
+    assert np.asarray(result) == pytest.approx(
         np.asarray(reference_contour(deltas, coords))
     )
 

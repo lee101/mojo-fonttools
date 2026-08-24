@@ -53,6 +53,7 @@ def build(force: bool = False) -> str:
 
 
 _LIB = None
+_PY_LIB = None
 
 
 def lib() -> ctypes.CDLL:
@@ -64,6 +65,15 @@ def lib() -> ctypes.CDLL:
             fn.argtypes = args
             fn.restype = result
     return _LIB
+
+
+def py_lib() -> ctypes.PyDLL:
+    global _PY_LIB
+    if _PY_LIB is None:
+        _PY_LIB = ctypes.PyDLL(build())
+        _PY_LIB.mft_iup_result.argtypes = [I, I]
+        _PY_LIB.mft_iup_result.restype = ctypes.py_object
+    return _PY_LIB
 
 
 def addr(

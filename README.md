@@ -83,21 +83,23 @@ print(calcCubicBoundsBatch(curves))
 
 ## Benchmarks
 
-Measured on 2026-07-30 with an Intel Xeon E5-2697 v4 at 2.30 GHz, Linux x86-64. Values are
+Measured on 2026-08-24 with an Intel Xeon E5-2697 v4 at 2.30 GHz, Linux x86-64. Values are
 medians from `pixi run bench`; lower time is better and speedup is
 `fontTools time / Mojo time`.
 
 | Workload | fontTools | Mojo | Speedup |
 |---|---:|---:|---:|
-| IUP contour, 200k points / 200 refs | 118.114 ms | 192.224 ms | 0.61x |
-| Cubic bounds, 100k curves (batch) | 830.379 ms | 9.976 ms | 83.24x |
+| IUP contour, 200k points / 200 refs | 67.572 ms | 82.290 ms | 0.82x |
+| Cubic bounds, 100k curves (batch) | 755.781 ms | 9.048 ms | 83.53x |
 
-The list-shaped IUP API now flattens coordinates directly into one interleaved buffer and
-passes only the sparse reference deltas. Contiguous NumPy coordinate buffers cross the FFI
-boundary without a copy. Python input and result-tuple construction still dominate this
-workload; the SIMD interpolation kernel itself is a small fraction of the total. The batch
-bounds API amortizes the FFI cost across 100,000 curves and is substantially faster. Scalar
-geometry calls also pay a ctypes call per curve, so use the batch functions for throughput.
+The list-shaped IUP API flattens coordinates directly into one interleaved buffer and passes
+only the sparse reference deltas. Contiguous NumPy coordinate buffers cross the FFI boundary
+without a copy. Result tuples are constructed in one native CPython-API loop instead of
+materializing two Python lists and zipping them. Python input and object construction still
+dominate this workload; the SIMD interpolation kernel itself takes under one millisecond in
+profiling. The batch bounds API amortizes the FFI cost across 100,000 curves and is
+substantially faster. Scalar geometry calls also pay a ctypes call per curve, so use the
+batch functions for throughput.
 
 No parallel or GPU path is enabled. Thresholded CPU parallelization made the 200,000-point
 IUP workload slower because its SIMD kernel is too short to repay thread-launch overhead.

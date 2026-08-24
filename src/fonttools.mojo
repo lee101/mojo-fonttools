@@ -1,4 +1,5 @@
 from std.math import sqrt
+from std.ffi import external_call
 from std.sys.info import simd_width_of
 
 comptime FPtr = UnsafePointer[Float64, AnyOrigin[mut=True]]
@@ -430,3 +431,30 @@ def mft_iup_contour(
 
     for segment in range(ref_count):
         process_segment(segment)
+
+
+@export("mft_iup_result")
+def mft_iup_result(dst_addr: Int, point_count: Int) abi("C") -> Int:
+    var values = fp(dst_addr)
+    var result = external_call["PyList_New", Int](point_count)
+    if result == 0:
+        return 0
+    for i in range(point_count):
+        var pair = external_call["PyTuple_New", Int](2)
+        if pair == 0:
+            external_call["Py_DecRef", NoneType](result)
+            return 0
+        var x = external_call["PyFloat_FromDouble", Int](values[i])
+        var y = external_call["PyFloat_FromDouble", Int](values[point_count + i])
+        if x == 0 or y == 0:
+            if x != 0:
+                external_call["Py_DecRef", NoneType](x)
+            if y != 0:
+                external_call["Py_DecRef", NoneType](y)
+            external_call["Py_DecRef", NoneType](pair)
+            external_call["Py_DecRef", NoneType](result)
+            return 0
+        _ = external_call["PyTuple_SetItem", Int32](pair, 0, x)
+        _ = external_call["PyTuple_SetItem", Int32](pair, 1, y)
+        _ = external_call["PyList_SetItem", Int32](result, i, pair)
+    return result
