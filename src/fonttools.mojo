@@ -6,6 +6,10 @@ comptime FPtr = UnsafePointer[Float64, AnyOrigin[mut=True]]
 comptime BPtr = UnsafePointer[UInt8, AnyOrigin[mut=True]]
 comptime IPtr = UnsafePointer[Int, AnyOrigin[mut=True]]
 
+# Same threshold as fontTools.misc.bezierTools.epsilon; roots whose leading
+# coefficient is this small are solved as linear equations, matching upstream.
+comptime EPSILON = 1e-10
+
 
 def fp(addr: Int) -> FPtr:
     return FPtr(unsafe_from_address=addr)
@@ -76,12 +80,12 @@ def mft_quadratic_bounds(
     dst[2] = max(x0, x2)
     dst[3] = max(y0, y2)
     var den = x0 - 2.0 * x1 + x2
-    if den != 0.0:
+    if abs(den) >= EPSILON:
         var t = (x0 - x1) / den
         if t >= 0.0 and t < 1.0:
             include_point(dst, qpoint(x0, x1, x2, t), qpoint(y0, y1, y2, t))
     den = y0 - 2.0 * y1 + y2
-    if den != 0.0:
+    if abs(den) >= EPSILON:
         var t = (y0 - y1) / den
         if t >= 0.0 and t < 1.0:
             include_point(dst, qpoint(x0, x1, x2, t), qpoint(y0, y1, y2, t))
@@ -92,11 +96,12 @@ def include_cubic_roots(
     x0: Float64, y0: Float64, x1: Float64, y1: Float64,
     x2: Float64, y2: Float64, x3: Float64, y3: Float64
 ):
-    if a == 0.0:
-        if b != 0.0:
-            var t = -c / b
-            if t >= 0.0 and t < 1.0:
-                include_point(dst, cpoint(x0, x1, x2, x3, t), cpoint(y0, y1, y2, y3, t))
+    if abs(a) < EPSILON:
+        if abs(b) < EPSILON:
+            return
+        var t = -c / b
+        if t >= 0.0 and t < 1.0:
+            include_point(dst, cpoint(x0, x1, x2, x3, t), cpoint(y0, y1, y2, y3, t))
         return
     var disc = b * b - 4.0 * a * c
     if disc < 0.0:
@@ -153,7 +158,7 @@ def mft_quadratic_bounds_batch(src_addr: Int, count: Int, dst_addr: Int) abi("C"
         dst[target + 2] = max(x0, x2)
         dst[target + 3] = max(y0, y2)
         var den = x0 - 2.0 * x1 + x2
-        if den != 0.0:
+        if abs(den) >= EPSILON:
             var t = (x0 - x1) / den
             if t >= 0.0 and t < 1.0:
                 include_point(
@@ -161,7 +166,7 @@ def mft_quadratic_bounds_batch(src_addr: Int, count: Int, dst_addr: Int) abi("C"
                     qpoint(x0, x1, x2, t), qpoint(y0, y1, y2, t)
                 )
         den = y0 - 2.0 * y1 + y2
-        if den != 0.0:
+        if abs(den) >= EPSILON:
             var t = (y0 - y1) / den
             if t >= 0.0 and t < 1.0:
                 include_point(
