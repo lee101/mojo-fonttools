@@ -103,9 +103,26 @@ batch functions for throughput.
 
 No parallel or GPU path is enabled. Thresholded CPU parallelization made the 200,000-point
 IUP workload slower because its SIMD kernel is too short to repay thread-launch overhead.
-The available batched kernels are also below the roughly two-flops-per-byte threshold once
-input and output traffic is counted, so GPU transfer and launch overhead would not be
-justified.
+
+### GPU: CPU only: memory-bound
+
+No GPU path is implemented. Every compute kernel is below the roughly two-flops-per-byte
+gate used for this phase, so device transfer and launch overhead cannot be repaid. This is
+true regardless of device availability; the shared GPU happened to have 4583 MiB free when
+measured on 2026-11-10, but the gate is the traffic ratio, not memory headroom.
+
+| Kernel | Traffic per element | Est. flops per element | flops/byte |
+|---|---:|---:|---:|
+| `mft_cubic_bounds_batch` | 64 B in + 32 B out (8→4 float64) | ~110 | ~1.1 |
+| `mft_quadratic_bounds_batch` | 48 B in + 32 B out (6→4 float64) | ~50 | ~0.6 |
+| `mft_iup_contour` | 16 B in + 16 B out (2→2 float64) | ~8 | ~0.25 |
+| `mft_decode_simple_glyph` | ~6 B in + ~24 B out (packed byte deltas) | <10 | <0.4 |
+
+These ratios match the measurements in `bench/analysis.md`, where the batch bounds kernels
+are memory-bandwidth limited on CPU (8.3 ms for 100k cubic curves, 3.5 ms for 100k
+quadratic curves, versus 0.57 ms for 200k IUP points). There are no kernels above the gate,
+so no before/after GPU numbers exist. A GPU phase would have nothing to accelerate; the
+CPU SIMD path is the measured, preferred path at the sizes real callers pass.
 
 ## How it works
 
